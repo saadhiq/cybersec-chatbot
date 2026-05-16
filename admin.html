@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        #login-screen { background: white; padding: 40px; border-radius: 12px; width: 360px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        #login-screen h2 { margin-bottom: 20px; color: #1a1a2e; }
+        #login-screen input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        #login-screen button { width: 100%; padding: 10px; background: #533AB7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+
+        #dashboard { display: none; width: 860px; padding: 30px 0; }
+        #dashboard h2 { margin-bottom: 20px; color: #1a1a2e; }
+
+        .session-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+        .session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .session-header h3 { font-size: 15px; color: #1a1a2e; }
+        .session-header span { font-size: 12px; color: #888; }
+        
+        .score-badge { display: inline-block; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 500; margin-bottom: 10px; }
+        .score-high { background: #e1f5ee; color: #0f6e56; }
+        .score-mid  { background: #faeeda; color: #854f0b; }
+        .score-low  { background: #fcebeb; color: #a32d2d; }
+        .score-none { background: #f1efe8; color: #5f5e5a; }
+
+        .summary { font-size: 13px; color: #444; line-height: 1.6; margin-bottom: 10px; }
+
+        .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .tag { font-size: 11px; padding: 3px 10px; border-radius: 99px; }
+        .tag-strength { background: #e1f5ee; color: #0f6e56; }
+        .tag-gap      { background: #fcebeb; color: #a32d2d; }
+
+        .summarize-btn { padding: 8px 18px; background: #533AB7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+        .summarize-btn:disabled { background: #aaa; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+    <h2>🛡️ Admin Dashboard</h2>
+    <input type="text" id="username" placeholder="Admin username">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+    <h2>Student Sessions</h2>
+    <div id="sessions-list"></div>
+</div>
+
+<script>
+    const BASE = 'http://127.0.0.1:8000';
+
+    // ── LOGIN ──────────────────────────────────────────
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        const res = await fetch(`${BASE}/api/auth/login/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (data.access) {
+            localStorage.setItem('token', data.access);
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            await fetchSessions();
+        } else {
+            alert('Login failed. Are you an admin user?');
+        }
+    }
+
+    // ── FETCH ALL SESSIONS ─────────────────────────────
+    async function fetchSessions() {
+        const res = await fetch(`${BASE}/api/admin/sessions/`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            }
+        });
+        const data = await res.json();
+        renderSessions(data.sessions);
+    }
+
+    // ── SUMMARIZE A SESSION ────────────────────────────
+    async function summarize(sessionId, btn) {
+        btn.disabled = true;
+        btn.textContent = 'Analyzing...';
+
+        const res = await fetch(`${BASE}/api/admin/${sessionId}/summarize/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            }
+        });
+
+        const result = await res.json();
+        await fetchSessions();
+    }
+
+    // ── RENDER SESSIONS ────────────────────────────────
+    function renderSessions(sessions) {
+        const container = document.getElementById('sessions-list');
+        container.innerHTML = '';
+
+        sessions.forEach(session => {
+            const score = session.score;
+            const scoreClass = score === null ? 'score-none'
+                             : score >= 75   ? 'score-high'
+                             : score >= 50   ? 'score-mid'
+                             :                 'score-low';
+            const scoreLabel = score === null ? 'Not scored yet' : `Score: ${score}/100`;
+
+            const card = document.createElement('div');
+            card.className = 'session-card';
+            card.innerHTML = `
+                <div class="session-header">
+                    <h3>👤 ${session.student__username}</h3>
+                    <span>${new Date(session.started_at).toLocaleString()}</span>
+                </div>
+                <div class="score-badge ${scoreClass}">${scoreLabel}</div>
+                ${session.summary
+                    ? `<p class="summary">${session.summary}</p>`
+                    : '<p class="summary" style="color:#aaa">No summary yet</p>'
+                }
+                <button class="summarize-btn" onclick="summarize(${session.id}, this)">
+                    ${score === null ? 'Summarize & Score' : 'Re-analyse'}
+                </button>
+            `;
+            container.appendChild(card);
+        });
+    }
+</script>
+
+</body>
+</html>

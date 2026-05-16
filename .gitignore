@@ -1,0 +1,16 @@
+# Environment variables - never share these
+.env
+
+# Virtual environment - too large, recreated from requirements.txt
+venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Database - contains real user data
+db.sqlite3
+
+# VS Code settings
+.vscode/
