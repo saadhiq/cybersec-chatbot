@@ -39,3 +39,11 @@ def get_history(request, session_id):
     session = ChatSession.objects.get(id=session_id, student=request.user)
     messages = session.messages.order_by('timestamp').values('role', 'content', 'timestamp')
     return Response({'messages': list(messages)})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_my_sessions(request):
+    sessions = ChatSession.objects.filter(
+        student=request.user
+    ).order_by('-started_at').values('id', 'started_at', 'score', 'summary')
+    return Response({'sessions': list(sessions)})

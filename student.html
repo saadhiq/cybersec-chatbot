@@ -3,109 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <title>CyberSec Tutor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        
+        body { font-family: sans-serif; background: #f0f2f5; height: 100vh; display: flex; align-items: center; justify-content: center; }
+
+        /* ── LOGIN ── */
         #login-screen { background: white; padding: 40px; border-radius: 12px; width: 360px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
         #login-screen h2 { margin-bottom: 20px; color: #1a1a2e; }
         #login-screen input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-        #login-screen button { width: 100%; padding: 10px; background: #185FA5; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .btn-primary { width: 100%; padding: 10px; background: #185FA5; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .btn-success { width: 100%; padding: 10px; background: #1D9E75; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 8px; }
 
-        #chat-screen { display: none; flex-direction: column; width: 700px; height: 90vh; background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }
-        #chat-header { padding: 16px 20px; background: #185FA5; color: white; font-weight: 500; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        
-        .message { max-width: 75%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+        /* ── APP SHELL ── */
+        #app { display: none; width: 100vw; height: 100vh; flex-direction: row; }
+
+        /* ── SIDEBAR ── */
+        #sidebar { width: 260px; background: #1a1a2e; display: flex; flex-direction: column; padding: 16px; gap: 8px; flex-shrink: 0; }
+        #sidebar-header { color: white; font-size: 15px; font-weight: 500; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        #new-chat-btn { padding: 10px; background: #185FA5; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; text-align: left; }
+        #new-chat-btn:hover { background: #1a6fc4; }
+        #sessions-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+        .session-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; color: #ccc; font-size: 13px; border: 1px solid transparent; }
+        .session-item:hover { background: rgba(255,255,255,0.08); }
+        .session-item.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.15); color: white; }
+        .session-score { font-size: 11px; color: #888; margin-top: 2px; }
+        #logout-btn { padding: 10px; background: transparent; color: #888; border: 1px solid #333; border-radius: 8px; cursor: pointer; font-size: 13px; }
+        #logout-btn:hover { border-color: #e24b4a; color: #e24b4a; }
+
+        /* ── CHAT AREA ── */
+        #chat-area { flex: 1; display: flex; flex-direction: column; }
+        #chat-header { padding: 16px 20px; background: white; border-bottom: 1px solid #eee; font-weight: 500; color: #1a1a2e; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #f0f2f5; }
+        .message { max-width: 75%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
         .user { background: #185FA5; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .assistant { background: #f0f2f5; color: #1a1a2e; align-self: flex-start; border-bottom-left-radius: 4px; }
-        
-        #input-area { display: flex; padding: 16px; border-top: 1px solid #eee; gap: 10px; }
-        #input-area input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-        #input-area button { padding: 10px 20px; background: #185FA5; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        #input-area button:disabled { background: #aaa; cursor: not-allowed; }
-        #mic-btn { padding: 10px 14px; background: #1D9E75; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        .assistant { background: white; color: #1a1a2e; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .assistant h1,.assistant h2,.assistant h3 { margin: 8px 0 4px; }
+        .assistant ul,.assistant ol { padding-left: 20px; }
+        .assistant p { margin-bottom: 6px; }
+        .empty-state { text-align: center; color: #aaa; margin: auto; font-size: 14px; }
+
+        /* ── INPUT ── */
+        #input-area { display: flex; padding: 16px; background: white; border-top: 1px solid #eee; gap: 8px; align-items: center; }
+        #user-input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; }
+        #user-input:focus { border-color: #185FA5; }
+        #mic-btn { padding: 10px 14px; background: #1D9E75; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; user-select: none; }
         #mic-btn.listening { background: #e24b4a; }
+        #send-btn { padding: 10px 20px; background: #185FA5; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        #send-btn:disabled { background: #aaa; cursor: not-allowed; }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 </head>
 <body>
 
-<!-- Login/Register Screen -->
+<!-- Login Screen -->
 <div id="login-screen">
     <h2>🔐 CyberSec Tutor</h2>
     <input type="text" id="username" placeholder="Username">
     <input type="password" id="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <button onclick="registerUser()" style="margin-top:8px;background:#1D9E75">Register</button>
+    <button class="btn-primary" onclick="login()">Login</button>
+    <button class="btn-success" onclick="registerUser()">Register</button>
 </div>
 
-<!-- Login Screen -->
-<!-- <div id="login-screen">
-    <h2>🔐 CyberSec Tutor</h2>
-    <input type="text" id="username" placeholder="Username">
-    <input type="password" id="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-</div> -->
+<!-- App Shell -->
+<div id="app">
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <div id="sidebar-header">🛡️ CyberSec Tutor</div>
+        <button id="new-chat-btn" onclick="startNewChat()">+ New Chat</button>
+        <div id="sessions-list"></div>
+        <button id="logout-btn" onclick="logout()">Logout</button>
+    </div>
 
-<!-- Chat Screen -->
-<div id="chat-screen">
-    <div id="chat-header">CyberSec Tutor — Ask me anything about cybersecurity</div>
-    <div id="messages"></div>
-    <div id="input-area">
-        <input type="text" id="user-input" placeholder="Ask a cybersecurity question..." onkeydown="if(event.key==='Enter') sendMessage()">
-        <button id="mic-btn" onclick="startVoice()" title="Speak">🎤</button>
-        <button id="send-btn" onclick="sendMessage()">Send</button>
+    <!-- Chat Area -->
+    <div id="chat-area">
+        <div id="chat-header">Select a session or start a new chat</div>
+        <div id="messages">
+            <div class="empty-state">👋 Start a new chat or select a previous session</div>
+        </div>
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Ask a cybersecurity question..." onkeydown="if(event.key==='Enter') sendMessage()">
+            <button id="mic-btn" onmousedown="startVoice()" onmouseup="stopVoice()" ontouchstart="startVoice()" ontouchend="stopVoice()">🎤</button>
+            <button id="send-btn" onclick="sendMessage()">Send</button>
+        </div>
     </div>
 </div>
 
 <script>
     const BASE = 'http://127.0.0.1:8000';
     let sessionId = null;
+    let recognition = null;
 
-    // ── Register ──────────────────────────────────────────
+    // ── AUTH ───────────────────────────────────────────
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const res = await fetch(`${BASE}/api/auth/login/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data.access) {
+            localStorage.setItem('token', data.access);
+            showApp();
+            await loadSessions();
+        } else {
+            alert('Login failed. Check your credentials.');
+        }
+    }
+
     async function registerUser() {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-
         const res = await fetch(`${BASE}/api/auth/register/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
-
         const data = await res.json();
         if (data.message) {
             alert('Account created! You can now login.');
         } else {
             alert(data.error);
         }
-        }
-
-    // ── LOGIN ──────────────────────────────────────────
-    async function login() {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
-        const res = await fetch(`${BASE}/api/auth/login/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-
-        const data = await res.json();
-
-        if (data.access) {
-            localStorage.setItem('token', data.access);
-            await startSession();
-            showChatScreen();
-        } else {
-            alert('Login failed. Check your username and password.');
-        }
     }
 
-    // ── START SESSION ──────────────────────────────────
-    async function startSession() {
+    function logout() {
+        localStorage.removeItem('token');
+        sessionId = null;
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'block';
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+    }
+
+    // ── SESSIONS ───────────────────────────────────────
+    async function loadSessions() {
+        const res = await fetch(`${BASE}/api/chat/sessions/`, {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const data = await res.json();
+        renderSidebar(data.sessions);
+    }
+
+    function renderSidebar(sessions) {
+        const list = document.getElementById('sessions-list');
+        list.innerHTML = '';
+        if (sessions.length === 0) {
+            list.innerHTML = '<div style="color:#555;font-size:12px;padding:8px">No sessions yet</div>';
+            return;
+        }
+        sessions.forEach(session => {
+            const div = document.createElement('div');
+            div.className = 'session-item' + (session.id === sessionId ? ' active' : '');
+            div.innerHTML = `
+                <div>Session #${session.id}</div>
+                <div class="session-score">${session.score !== null ? '⭐ Score: ' + session.score + '/100' : 'Not scored yet'}</div>
+            `;
+            div.onclick = () => loadSession(session.id);
+            list.appendChild(div);
+        });
+    }
+
+    async function loadSession(id) {
+        sessionId = id;
+        document.getElementById('chat-header').textContent = `Session #${id}`;
+        const res = await fetch(`${BASE}/api/chat/${id}/history/`, {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const data = await res.json();
+        const messages = document.getElementById('messages');
+        messages.innerHTML = '';
+        data.messages.forEach(m => addMessage(m.content, m.role));
+        await loadSessions();
+    }
+
+    async function startNewChat() {
         const res = await fetch(`${BASE}/api/chat/start/`, {
             method: 'POST',
             headers: {
@@ -115,16 +188,21 @@
         });
         const data = await res.json();
         sessionId = data.session_id;
+        document.getElementById('chat-header').textContent = `Session #${sessionId}`;
+        document.getElementById('messages').innerHTML = '';
+        await loadSessions();
     }
 
-    // ── SEND MESSAGE ───────────────────────────────────
+    // ── MESSAGING ──────────────────────────────────────
     async function sendMessage() {
         const input = document.getElementById('user-input');
         const btn = document.getElementById('send-btn');
         const text = input.value.trim();
         if (!text) return;
-
-        // Show student's message immediately
+        if (!sessionId) {
+            alert('Please start a new chat first!');
+            return;
+        }
         addMessage(text, 'user');
         input.value = '';
         btn.disabled = true;
@@ -138,15 +216,12 @@
             },
             body: JSON.stringify({ content: text })
         });
-
         const data = await res.json();
         addMessage(data.reply, 'assistant');
-
         btn.disabled = false;
         btn.textContent = 'Send';
     }
 
-    // ── HELPERS ────────────────────────────────────────
     function addMessage(text, role) {
         const messages = document.getElementById('messages');
         const div = document.createElement('div');
@@ -160,36 +235,38 @@
         messages.scrollTop = messages.scrollHeight;
     }
 
-    function showChatScreen() {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('chat-screen').style.display = 'flex';
-    }
-
+    // ── PUSH TO TALK ───────────────────────────────────
     function startVoice() {
         const btn = document.getElementById('mic-btn');
-        const input = document.getElementById('user-input');
-
-        const recognition = new webkitSpeechRecognition();
+        recognition = new webkitSpeechRecognition();
         recognition.lang = 'en-US';
         recognition.interimResults = false;
-
+        recognition.continuous = false;
         btn.classList.add('listening');
         btn.textContent = '⏹️';
-
         recognition.start();
-
         recognition.onresult = function(event) {
-            const spokenText = event.results[0][0].transcript;
-            input.value = spokenText;
-            btn.classList.remove('listening');
-            btn.textContent = '🎤';
+            document.getElementById('user-input').value = event.results[0][0].transcript;
         };
-
         recognition.onerror = function() {
             btn.classList.remove('listening');
             btn.textContent = '🎤';
-            alert('Could not hear you. Please try again.');
         };
+    }
+
+    function stopVoice() {
+        const btn = document.getElementById('mic-btn');
+        if (recognition) {
+            recognition.stop();
+        }
+        btn.classList.remove('listening');
+        btn.textContent = '🎤';
+    }
+
+    // ── HELPERS ────────────────────────────────────────
+    function showApp() {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
     }
 </script>
 
