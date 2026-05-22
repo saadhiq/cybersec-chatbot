@@ -56,7 +56,9 @@ INSTALLED_APPS = [
     'admin_panel',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True  # only for development
+# CORS_ALLOW_ALL_ORIGINS = True  # only for development
+
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5500').split(',')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
